@@ -1,0 +1,195 @@
+---
+import ThemeToggle from './ThemeToggle.astro';
+import { link } from '../utils/url';
+
+const navLinks = [
+  { href: link('/writing'), label: 'Writing' },
+  { href: link('/projects'), label: 'Projects' },
+  { href: link('/about'), label: 'About' },
+];
+
+const currentPath = Astro.url.pathname;
+
+function isActive(href: string): boolean {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+  const plain = href.replace(base, '') || '/';
+  if (plain === '/') return currentPath === href;
+  return currentPath.startsWith(href);
+}
+---
+
+<header>
+  <div class="container nav-inner">
+    <a href={link('/')} class="logo" aria-label="Home">ash</a>
+
+    <nav aria-label="Main navigation">
+      <ul>
+        {navLinks.map((link) => (
+          <li>
+            <a
+              href={link.href}
+              class:list={['nav-link', { active: isActive(link.href) }]}
+              aria-current={isActive(link.href) ? 'page' : undefined}
+            >
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+
+    <div class="nav-actions">
+      <ThemeToggle />
+    </div>
+
+    <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle menu" aria-expanded="false">
+      <svg class="icon-menu" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+      <svg class="icon-close" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="mobile-menu" id="mobile-menu" aria-hidden="true">
+    <nav>
+      <ul>
+        {navLinks.map((link) => (
+          <li>
+            <a
+              href={link.href}
+              class:list={['nav-link', { active: isActive(link.href) }]}
+            >
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<style>
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background-color: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+    backdrop-filter: blur(8px);
+    background-color: color-mix(in srgb, var(--color-bg) 90%, transparent);
+    transition: background-color var(--transition), border-color var(--transition);
+  }
+
+  .nav-inner {
+    height: var(--nav-height);
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+  }
+
+  .logo {
+    font-weight: 700;
+    font-size: var(--text-lg);
+    color: var(--color-text);
+    letter-spacing: -0.02em;
+    flex-shrink: 0;
+    text-decoration: none;
+  }
+
+  .logo:hover {
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  nav {
+    flex: 1;
+  }
+
+  nav ul {
+    display: flex;
+    list-style: none;
+    gap: var(--space-1);
+  }
+
+  .nav-link {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    transition: color var(--transition), background-color var(--transition);
+    text-decoration: none;
+  }
+
+  .nav-link:hover {
+    color: var(--color-text);
+    background-color: var(--color-surface);
+    text-decoration: none;
+  }
+
+  .nav-link.active {
+    color: var(--color-text);
+    background-color: var(--color-surface);
+  }
+
+  .nav-actions {
+    margin-left: auto;
+  }
+
+  .mobile-menu-btn {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    padding: var(--space-2);
+    line-height: 0;
+  }
+
+  .icon-close { display: none; }
+
+  .mobile-menu {
+    display: none;
+    border-top: 1px solid var(--color-border);
+    padding: var(--space-4);
+  }
+
+  .mobile-menu ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .mobile-menu .nav-link {
+    display: block;
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-base);
+  }
+
+  @media (max-width: 640px) {
+    nav { display: none; }
+    .nav-actions { margin-left: auto; }
+    .mobile-menu-btn { display: flex; }
+    .mobile-menu { display: none; }
+    .mobile-menu.open { display: block; }
+  }
+</style>
+
+<script>
+  const btn = document.getElementById('mobile-menu-btn');
+  const menu = document.getElementById('mobile-menu');
+
+  btn?.addEventListener('click', () => {
+    const isOpen = menu?.classList.toggle('open');
+    btn.setAttribute('aria-expanded', String(isOpen));
+    menu?.setAttribute('aria-hidden', String(!isOpen));
+    (btn.querySelector('.icon-menu') as HTMLElement).style.display = isOpen ? 'none' : '';
+    (btn.querySelector('.icon-close') as HTMLElement).style.display = isOpen ? '' : 'none';
+  });
+</script>

@@ -1,0 +1,192 @@
+---
+import Base from '../layouts/Base.astro';
+import PostCard from '../components/PostCard.astro';
+import { getCollection } from 'astro:content';
+import { getReadingTime } from '../utils/reading-time';
+import { link } from '../utils/url';
+
+const posts = (await getCollection('posts', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, 4);
+
+const projects = (await getCollection('projects', ({ data }) => !data.draft && data.featured))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, 3);
+---
+
+<Base title="Home">
+  <div class="prose-container">
+
+    <!-- Hero -->
+    <section class="hero">
+      <h1>Ash</h1>
+      <p class="tagline">
+        I write about things I find interesting.
+      </p>
+      <div class="hero-links">
+        <a href={link('/about')}>More about me →</a>
+      </div>
+    </section>
+
+    <!-- Recent writing -->
+    <section class="section">
+      <div class="section-header">
+        <h2>Recent Writing</h2>
+        <a href={link('/writing')} class="see-all">All posts →</a>
+      </div>
+
+      {posts.length === 0 ? (
+        <p class="empty">No posts yet — check back soon.</p>
+      ) : (
+        <div class="post-list">
+          {posts.map((post) => (
+            <PostCard
+              title={post.data.title}
+              description={post.data.description}
+              date={post.data.date}
+              slug={post.slug}
+              tags={post.data.tags}
+              readingTime={getReadingTime(post.body)}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+
+    <!-- Featured projects -->
+    {projects.length > 0 && (
+      <section class="section">
+        <div class="section-header">
+          <h2>Featured Projects</h2>
+          <a href={link('/projects')} class="see-all">All projects →</a>
+        </div>
+        <div class="featured-projects">
+          {projects.map((project) => (
+            <div class="featured-project">
+              <h3>
+                <a href={link(`/projects/${project.slug}`)}>{project.data.title}</a>
+              </h3>
+              <p>{project.data.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+
+  </div>
+</Base>
+
+<style>
+  .hero {
+    padding-top: var(--space-16);
+    padding-bottom: var(--space-16);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-12);
+  }
+
+  h1 {
+    font-size: clamp(var(--text-2xl), 6vw, var(--text-4xl));
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    margin-bottom: var(--space-4);
+  }
+
+  .tagline {
+    font-size: var(--text-lg);
+    color: var(--color-text-muted);
+    max-width: 52ch;
+    line-height: 1.6;
+    margin-bottom: var(--space-6);
+  }
+
+  .hero-links {
+    display: flex;
+    gap: var(--space-4);
+  }
+
+  .hero-links a {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .hero-links a:hover {
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .section {
+    margin-bottom: var(--space-16);
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: 600;
+  }
+
+  .see-all {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .see-all:hover {
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .empty {
+    color: var(--color-text-muted);
+    font-style: italic;
+  }
+
+  .featured-projects {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .featured-project {
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    transition: border-color var(--transition);
+  }
+
+  .featured-project:hover {
+    border-color: var(--color-accent);
+  }
+
+  .featured-project h3 {
+    font-size: var(--text-base);
+    font-weight: 600;
+    margin-bottom: var(--space-1);
+  }
+
+  .featured-project h3 a {
+    color: var(--color-text);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .featured-project h3 a:hover {
+    color: var(--color-accent);
+  }
+
+  .featured-project p {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    line-height: 1.5;
+  }
+</style>

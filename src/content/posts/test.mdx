@@ -1,0 +1,99 @@
+---
+title: "Test Post"
+description: "A showcase of everything you can include in a post — syntax-highlighted code blocks, math, images, tables, and interactive components."
+date: 2026-03-20
+tags: ["test"]
+---
+
+This post exists to show what the writing format supports. Everything below is real content you can use in any post.
+
+## Syntax-highlighted code
+
+Code blocks use Shiki, which supports 100+ languages with accurate highlighting.
+
+```python
+import numpy as np
+
+def mandelbrot(c, max_iter=100):
+    z = 0
+    for n in range(max_iter):
+        if abs(z) > 2:
+            return n
+        z = z * z + c
+    return max_iter
+
+# Generate a grid
+width, height = 800, 600
+real = np.linspace(-2.5, 1.0, width)
+imag = np.linspace(-1.25, 1.25, height)
+C = real[np.newaxis, :] + 1j * imag[:, np.newaxis]
+```
+
+```typescript
+type Point = { x: number; y: number };
+
+function lerp(a: Point, b: Point, t: number): Point {
+  return {
+    x: a.x + (b.x - a.x) * t,
+    y: a.y + (b.y - a.y) * t,
+  };
+}
+
+function bezier(p0: Point, p1: Point, p2: Point, t: number): Point {
+  const q0 = lerp(p0, p1, t);
+  const q1 = lerp(p1, p2, t);
+  return lerp(q0, q1, t);
+}
+```
+
+```glsl
+// Fragment shader — normal-mapped sphere
+uniform vec3 lightDir;
+varying vec3 vNormal;
+varying vec2 vUv;
+
+void main() {
+  vec3 N = normalize(vNormal);
+  float diff = max(dot(N, lightDir), 0.0);
+  gl_FragColor = vec4(vec3(diff), 1.0);
+}
+```
+
+## Blockquotes
+
+> Hey
+> — No one
+
+## Tables
+
+| Format | Use case | Supports interactive? |
+|--------|----------|-----------------------|
+| `.md`  | Standard posts | No |
+| `.mdx` | Posts with components | Yes |
+
+## Lists
+
+Ordered:
+
+1. Write the post in Markdown
+2. Add frontmatter (title, date, tags, etc.)
+3. Push to git
+4. Site rebuilds automatically
+
+Unordered:
+
+- Images with captions
+- Code blocks with copy button
+- Nested lists work fine
+  - Like this
+  - And this
+
+## Inline formatting
+
+You can use **bold**, _italic_, `inline code`, and [links](https://astro.build).
+
+Horizontal rules act as section breaks:
+
+---
+
+That's the full feature set. Any post you write can use all of the above.

@@ -1,0 +1,145 @@
+---
+import Base from '../../layouts/Base.astro';
+import PostCard from '../../components/PostCard.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+import { getCollection } from 'astro:content';
+import { getReadingTime, getAllTags } from '../../utils/reading-time';
+import { link } from '../../utils/url';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('posts', ({ data }) => !data.draft);
+  const projects = await getCollection('projects', ({ data }) => !data.draft);
+  const allItems = [...posts, ...projects];
+  const allTags = getAllTags(allItems);
+
+  return allTags.map((tag) => ({
+    params: { tag },
+    props: {
+      tag,
+      posts: posts
+        .filter((p) => p.data.tags.includes(tag))
+        .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf()),
+      projects: projects
+        .filter((p) => p.data.tags.includes(tag))
+        .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf()),
+    },
+  }));
+}
+
+const { tag, posts, projects } = Astro.props;
+const totalCount = posts.length + projects.length;
+---
+
+<Base
+  title={`#${tag}`}
+  description={`All posts and projects tagged with "${tag}".`}
+>
+  <div class="prose-container">
+    <nav class="breadcrumb">
+      <a href={link('/writing')}>Writing</a>
+      <span aria-hidden="true"> · </span>
+      <a href={link('/projects')}>Projects</a>
+    </nav>
+
+    <header class="page-header">
+      <h1><span class="hash">#</span>{tag}</h1>
+      <p class="subtitle">{totalCount} {totalCount === 1 ? 'item' : 'items'}</p>
+    </header>
+
+    {posts.length > 0 && (
+      <section class="section">
+        <h2 class="section-title">Writing</h2>
+        <div class="post-list">
+          {posts.map((post) => (
+            <PostCard
+              title={post.data.title}
+              description={post.data.description}
+              date={post.data.date}
+              slug={post.slug}
+              tags={post.data.tags}
+              readingTime={getReadingTime(post.body)}
+            />
+          ))}
+        </div>
+      </section>
+    )}
+
+    {projects.length > 0 && (
+      <section class="section">
+        <h2 class="section-title">Projects</h2>
+        <div class="project-grid">
+          {projects.map((project) => (
+            <ProjectCard
+              title={project.data.title}
+              description={project.data.description}
+              slug={project.slug}
+              tags={project.data.tags}
+              status={project.data.status}
+              cover={project.data.cover}
+              links={project.data.links}
+            />
+          ))}
+        </div>
+      </section>
+    )}
+  </div>
+</Base>
+
+<style>
+  .breadcrumb {
+    margin-bottom: var(--space-8);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .breadcrumb a {
+    color: var(--color-text-muted);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .breadcrumb a:hover {
+    color: var(--color-accent);
+  }
+
+  .page-header {
+    margin-bottom: var(--space-8);
+    padding-bottom: var(--space-8);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  h1 {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-2);
+  }
+
+  .hash {
+    color: var(--color-accent);
+  }
+
+  .subtitle {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .section {
+    margin-bottom: var(--space-12);
+  }
+
+  .section-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-subtle);
+    margin-bottom: var(--space-4);
+  }
+
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-6);
+  }
+</style>

@@ -1,0 +1,87 @@
+---
+import Base from '../../layouts/Base.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+import TagFilter from '../../components/TagFilter.astro';
+import { getCollection } from 'astro:content';
+import { getAllTags } from '../../utils/reading-time';
+
+const allProjects = (await getCollection('projects', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const allTags = getAllTags(allProjects);
+---
+
+<Base
+  title="Projects"
+  description="Things I've built — software and experiments."
+>
+  <div class="container page-content">
+    <header class="page-header">
+      <h1>Projects</h1>
+      <p class="subtitle">
+        Things I've built, explored, or am currently working on.
+      </p>
+    </header>
+
+    {allTags.length > 0 && (
+      <TagFilter tags={allTags} listSelector=".project-grid" />
+    )}
+
+    {allProjects.length === 0 ? (
+      <p class="empty">No projects yet.</p>
+    ) : (
+      <div class="project-grid">
+        {allProjects.map((project) => (
+          <div data-tags={project.data.tags.join(',')}>
+            <ProjectCard
+              title={project.data.title}
+              description={project.data.description}
+              slug={project.slug}
+              tags={project.data.tags}
+              status={project.data.status}
+              cover={project.data.cover}
+              links={project.data.links}
+            />
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</Base>
+
+<style>
+  .page-content {
+    max-width: var(--max-width-wide);
+  }
+
+  .page-header {
+    margin-bottom: var(--space-8);
+    padding-bottom: var(--space-8);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  h1 {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-3);
+  }
+
+  .subtitle {
+    color: var(--color-text-muted);
+    font-size: var(--text-lg);
+    line-height: 1.6;
+  }
+
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--space-6);
+  }
+
+  .empty {
+    color: var(--color-text-muted);
+    font-style: italic;
+    padding-block: var(--space-8);
+  }
+</style>

@@ -1,0 +1,76 @@
+---
+import Base from '../../layouts/Base.astro';
+import PostCard from '../../components/PostCard.astro';
+import TagFilter from '../../components/TagFilter.astro';
+import { getCollection } from 'astro:content';
+import { getReadingTime, getAllTags } from '../../utils/reading-time';
+
+const allPosts = (await getCollection('posts', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const allTags = getAllTags(allPosts);
+---
+
+<Base
+  title="Writing"
+  description="All my posts on things I find interesting."
+>
+  <div class="prose-container">
+    <header class="page-header">
+      <h1>Writing</h1>
+      <p class="subtitle">
+        Thoughts on things I find interesting.
+      </p>
+    </header>
+
+    {allTags.length > 0 && (
+      <TagFilter tags={allTags} listSelector=".post-list" />
+    )}
+
+    {allPosts.length === 0 ? (
+      <p class="empty">No posts yet — check back soon.</p>
+    ) : (
+      <div class="post-list">
+        {allPosts.map((post) => (
+          <div data-tags={post.data.tags.join(',')}>
+            <PostCard
+              title={post.data.title}
+              description={post.data.description}
+              date={post.data.date}
+              slug={post.slug}
+              tags={post.data.tags}
+              readingTime={getReadingTime(post.body)}
+            />
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</Base>
+
+<style>
+  .page-header {
+    margin-bottom: var(--space-8);
+    padding-bottom: var(--space-8);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  h1 {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-3);
+  }
+
+  .subtitle {
+    color: var(--color-text-muted);
+    font-size: var(--text-lg);
+    line-height: 1.6;
+  }
+
+  .empty {
+    color: var(--color-text-muted);
+    font-style: italic;
+    padding-block: var(--space-8);
+  }
+</style>

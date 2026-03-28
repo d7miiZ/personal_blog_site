@@ -1,0 +1,63 @@
+---
+import { link } from '../utils/url';
+const year = new Date().getFullYear();
+---
+
+<footer>
+  <div class="container footer-inner">
+    <p class="copyright">
+      &copy; {year} Ash
+    </p>
+    <nav aria-label="Footer links">
+      <a href={link('/rss.xml')} aria-label="RSS Feed" title="RSS Feed">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 11a9 9 0 0 1 9 9"/>
+          <path d="M4 4a16 16 0 0 1 16 16"/>
+          <circle cx="5" cy="19" r="1"/>
+        </svg>
+        RSS
+      </a>
+    </nav>
+  </div>
+</footer>
+
+<style>
+  footer {
+    border-top: 1px solid var(--color-border);
+    padding-block: var(--space-6);
+    margin-top: auto;
+  }
+
+  .footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  .copyright {
+    font-size: var(--text-sm);
+    color: var(--color-text-subtle);
+  }
+
+  nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  nav a {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  nav a:hover {
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+</style>

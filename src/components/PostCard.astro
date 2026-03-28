@@ -1,0 +1,103 @@
+---
+import TagPill from './TagPill.astro';
+import { link } from '../utils/url';
+
+interface Props {
+  title: string;
+  description: string;
+  date: Date;
+  slug: string;
+  tags: string[];
+  readingTime?: number;
+}
+
+const { title, description, date, slug, tags, readingTime } = Astro.props;
+
+const formattedDate = date.toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+});
+---
+
+<article class="post-card">
+  <div class="meta">
+    <time datetime={date.toISOString()} class="date">{formattedDate}</time>
+    {readingTime && <span class="reading-time">{readingTime} min read</span>}
+  </div>
+  <h2 class="title">
+    <a href={link(`/writing/${slug}`)}>{title}</a>
+  </h2>
+  <p class="description">{description}</p>
+  {tags.length > 0 && (
+    <div class="tags">
+      {tags.map((tag) => (
+        <TagPill tag={tag} href={link(`/tags/${encodeURIComponent(tag)}`)} size="sm" />
+      ))}
+    </div>
+  )}
+</article>
+
+<style>
+  .post-card {
+    padding-block: var(--space-6);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .post-card:last-child {
+    border-bottom: none;
+  }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+
+  .date {
+    font-size: var(--text-sm);
+    color: var(--color-text-subtle);
+  }
+
+  .reading-time {
+    font-size: var(--text-sm);
+    color: var(--color-text-subtle);
+  }
+
+  .reading-time::before {
+    content: '·';
+    margin-right: var(--space-3);
+  }
+
+  .title {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: var(--space-2);
+  }
+
+  .title a {
+    color: var(--color-text);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .title a:hover {
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .description {
+    font-size: var(--text-base);
+    color: var(--color-text-muted);
+    line-height: 1.6;
+    margin-bottom: var(--space-3);
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+</style>

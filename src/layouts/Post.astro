@@ -1,0 +1,141 @@
+---
+import Base from './Base.astro';
+import TagPill from '../components/TagPill.astro';
+import { formatDate } from '../utils/reading-time';
+import { link } from '../utils/url';
+
+interface Props {
+  title: string;
+  description: string;
+  date: Date;
+  updatedDate?: Date;
+  tags: string[];
+  readingTime?: number;
+  cover?: string;
+  coverAlt?: string;
+  collection: 'posts' | 'projects';
+}
+
+const {
+  title,
+  description,
+  date,
+  updatedDate,
+  tags,
+  readingTime,
+  cover,
+  coverAlt,
+  collection,
+} = Astro.props;
+
+const backHref = collection === 'posts'  ? link('/writing') : link('/projects');
+const backLabel = collection === 'posts' ? 'Writing' : 'Projects';
+---
+
+<Base title={title} description={description}>
+  <article class="prose-container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href={backHref}>← {backLabel}</a>
+    </nav>
+
+    <header class="post-header">
+      <div class="meta">
+        <time datetime={date.toISOString()}>{formatDate(date)}</time>
+        {readingTime && (
+          <span class="reading-time">· {readingTime} min read</span>
+        )}
+        {updatedDate && (
+          <span class="updated">· Updated {formatDate(updatedDate)}</span>
+        )}
+      </div>
+
+      <h1>{title}</h1>
+      <p class="lead">{description}</p>
+
+      {tags.length > 0 && (
+        <div class="tags">
+          {tags.map((tag) => (
+            <TagPill tag={tag} href={link(`/tags/${encodeURIComponent(tag)}`)} />
+          ))}
+        </div>
+      )}
+    </header>
+
+    {cover && (
+      <div class="cover-image">
+        <img src={cover} alt={coverAlt ?? title} />
+      </div>
+    )}
+
+    <div class="prose">
+      <slot />
+    </div>
+  </article>
+</Base>
+
+<style>
+  .breadcrumb {
+    margin-bottom: var(--space-8);
+  }
+
+  .breadcrumb a {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .breadcrumb a:hover {
+    color: var(--color-accent);
+  }
+
+  .post-header {
+    margin-bottom: var(--space-8);
+    padding-bottom: var(--space-8);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .meta {
+    font-size: var(--text-sm);
+    color: var(--color-text-subtle);
+    margin-bottom: var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    flex-wrap: wrap;
+  }
+
+  h1 {
+    font-size: clamp(var(--text-2xl), 5vw, var(--text-4xl));
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-4);
+    color: var(--color-text);
+  }
+
+  .lead {
+    font-size: var(--text-lg);
+    color: var(--color-text-muted);
+    line-height: 1.6;
+    margin-bottom: var(--space-4);
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .cover-image {
+    margin-bottom: var(--space-8);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .cover-image img {
+    width: 100%;
+    aspect-ratio: 16 / 7;
+    object-fit: cover;
+  }
+</style>
