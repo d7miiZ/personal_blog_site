@@ -4,7 +4,7 @@ import Base from '../layouts/Base.astro';
 
 <Base
   title="About"
-  description="About me."
+  description="About Abdulrahman Alshawi (Ash)."
 >
   <div class="prose-container">
     <header class="page-header">
@@ -12,7 +12,33 @@ import Base from '../layouts/Base.astro';
     </header>
 
     <div class="prose">
+      <p>
+        Hi, I am <strong>Abdulrahman Alshawi (Ash)</strong>. I write about things I find interesting.
+      </p>
+
       <h2>Get in touch</h2>
+      <ul class="contact-list">
+        <li>
+          <span class="label">GitHub:</span>
+          <a href="https://github.com/d7miiZ" target="_blank" rel="noopener noreferrer">
+            github.com/d7miiZ
+          </a>
+        </li>
+        <li>
+          <span class="label">LinkedIn:</span>
+          <a
+            href="https://www.linkedin.com/in/abdulrahman-alshawi-26b68b1a6"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            linkedin.com/in/abdulrahman-alshawi-26b68b1a6
+          </a>
+        </li>
+        <li>
+          <span class="label">Email:</span>
+          <a href="mailto:alshawiabdulrahman@gmail.com">alshawiabdulrahman@gmail.com</a>
+        </li>
+      </ul>
     </div>
   </div>
 </Base>
@@ -28,5 +54,21 @@ import Base from '../layouts/Base.astro';
     font-size: var(--text-3xl);
     font-weight: 700;
     letter-spacing: -0.02em;
+  }
+
+  .contact-list {
+    list-style: none;
+    padding-left: 0;
+    margin-top: var(--space-4);
+  }
+
+  .contact-list li {
+    margin-bottom: var(--space-3);
+  }
+
+  .label {
+    color: var(--color-text-muted);
+    margin-right: var(--space-2);
+    font-weight: 500;
   }
 </style>
