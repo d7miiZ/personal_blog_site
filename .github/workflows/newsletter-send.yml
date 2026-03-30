@@ -1,0 +1,131 @@
+name: Send newsletter update
+
+on:
+  workflow_run:
+    workflows: ["Deploy to GitHub Pages"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: newsletter-send
+  cancel-in-progress: false
+
+jobs:
+  send-update:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ github.token }}
+
+      - name: Validate required configuration
+        env:
+          BUTTONDOWN_API_KEY: ${{ secrets.BUTTONDOWN_API_KEY }}
+          SITE_RSS_URL: ${{ vars.SITE_RSS_URL }}
+        run: |
+          test -n "$BUTTONDOWN_API_KEY" || (echo "Missing secret: BUTTONDOWN_API_KEY" && exit 1)
+          test -n "$SITE_RSS_URL" || (echo "Missing variable: SITE_RSS_URL" && exit 1)
+
+      - name: Fetch latest RSS item
+        id: rss
+        env:
+          SITE_RSS_URL: ${{ vars.SITE_RSS_URL }}
+        run: |
+          node <<'EOF' > latest_item.txt
+          const rssUrl = process.env.SITE_RSS_URL;
+          if (!rssUrl) throw new Error("SITE_RSS_URL is required.");
+
+          const stripTags = (value = "") => value.replace(/<[^>]+>/g, "");
+          const decodeEntities = (value = "") =>
+            value
+              .replace(/&quot;/g, '"')
+              .replace(/&#39;/g, "'")
+              .replace(/&lt;/g, "<")
+              .replace(/&gt;/g, ">")
+              .replace(/&amp;/g, "&");
+          const firstMatch = (source, regex) => source.match(regex)?.[1]?.trim() ?? "";
+
+          const res = await fetch(rssUrl);
+          if (!res.ok) throw new Error(`Could not fetch RSS feed (${res.status}).`);
+          const xml = await res.text();
+          const item = firstMatch(xml, /<item\b[^>]*>([\s\S]*?)<\/item>/i);
+          if (!item) throw new Error("No RSS item found.");
+
+          const title = decodeEntities(firstMatch(item, /<title>([\s\S]*?)<\/title>/i));
+          const link = decodeEntities(firstMatch(item, /<link>([\s\S]*?)<\/link>/i));
+          const pubDate = decodeEntities(firstMatch(item, /<pubDate>([\s\S]*?)<\/pubDate>/i));
+          const descriptionRaw = firstMatch(item, /<description>([\s\S]*?)<\/description>/i);
+          const description = decodeEntities(stripTags(descriptionRaw)).replace(/\s+/g, " ").trim();
+
+          if (!title || !link) throw new Error("RSS item is missing required title/link.");
+
+          const payload = {
+            title,
+            link,
+            pubDate,
+            description: description || "New content published.",
+          };
+          process.stdout.write(JSON.stringify(payload));
+          EOF
+
+          echo "json=$(cat latest_item.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Dedupe using marker file
+        id: dedupe
+        env:
+          ITEM_JSON: ${{ steps.rss.outputs.json }}
+        run: |
+          MARKER=.github/last-sent-rss-link.txt
+          ITEM_LINK="$(node -e 'const p=JSON.parse(process.env.ITEM_JSON);process.stdout.write(p.link)')"
+          echo "item_link=$ITEM_LINK" >> "$GITHUB_OUTPUT"
+
+          LAST_SENT=""
+          if [ -f "$MARKER" ]; then
+            LAST_SENT="$(tr -d '\n\r' < "$MARKER")"
+          fi
+
+          if [ "$LAST_SENT" = "$ITEM_LINK" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Latest RSS item already sent."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "New RSS item detected."
+          fi
+
+      - name: Send Buttondown email
+        if: steps.dedupe.outputs.skip != 'true'
+        id: send
+        env:
+          BUTTONDOWN_API_KEY: ${{ secrets.BUTTONDOWN_API_KEY }}
+          ITEM_JSON: ${{ steps.rss.outputs.json }}
+        run: |
+          SEND_RESULT="$(python3 scripts/send_buttondown_email.py)"
+          echo "status_used=about_to_send" >> "$GITHUB_OUTPUT"
+          echo "email_id=$(printf '%s' "$SEND_RESULT" | node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c);process.stdin.on(\"end\",()=>{try{process.stdout.write(JSON.parse(d).email_id||\"\")}catch{process.stdout.write(\"\")}})')" >> "$GITHUB_OUTPUT"
+
+      - name: Record last-sent RSS link
+        if: steps.dedupe.outputs.skip != 'true'
+        env:
+          ITEM_LINK: ${{ steps.dedupe.outputs.item_link }}
+        run: |
+          mkdir -p .github
+          printf '%s' "$ITEM_LINK" > .github/last-sent-rss-link.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/last-sent-rss-link.txt
+          git commit -m "chore: record last newsletter RSS item"
+          git pull --rebase origin main
+          git push origin main
+
+      - name: Summary
+        run: |
+          echo "Workflow finished."

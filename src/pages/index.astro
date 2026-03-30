@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import PostCard from '../components/PostCard.astro';
+import SubscribeCta from '../components/SubscribeCta.astro';
 import { getCollection } from 'astro:content';
 import { getReadingTime } from '../utils/reading-time';
 import { link } from '../utils/url';
@@ -25,6 +26,9 @@ const projects = (await getCollection('projects', ({ data }) => !data.draft && d
       </p>
       <div class="hero-links">
         <a href={link('/about')}>More about me →</a>
+      </div>
+      <div class="hero-subscribe">
+        <SubscribeCta compact={true} />
       </div>
     </section>
 
@@ -103,6 +107,11 @@ const projects = (await getCollection('projects', ({ data }) => !data.draft && d
   .hero-links {
     display: flex;
     gap: var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+
+  .hero-subscribe {
+    max-width: 36rem;
   }
 
   .hero-links a {

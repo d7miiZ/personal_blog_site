@@ -1,6 +1,7 @@
 import rss from "@astrojs/rss";
 import { getCollection } from "astro:content";
 import type { APIContext } from "astro";
+import { link } from "../utils/url";
 
 export async function GET(context: APIContext) {
   const posts = (await getCollection("posts", ({ data }) => !data.draft)).map(
@@ -8,7 +9,7 @@ export async function GET(context: APIContext) {
       title: post.data.title,
       description: post.data.description,
       pubDate: post.data.date,
-      link: `/writing/${post.slug}/`,
+      link: link(`/writing/${post.slug}/`),
     }),
   );
 
@@ -18,7 +19,7 @@ export async function GET(context: APIContext) {
     title: `[Project] ${project.data.title}`,
     description: project.data.description,
     pubDate: project.data.date,
-    link: `/projects/${project.slug}/`,
+    link: link(`/projects/${project.slug}/`),
   }));
 
   const items = [...posts, ...projects].sort(

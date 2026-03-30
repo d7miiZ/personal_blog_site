@@ -3,6 +3,9 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+    paths-ignore:
+      # Newsletter workflow commits this file only; skip Pages deploy to avoid loops.
+      - '.github/last-sent-rss-link.txt'
   workflow_dispatch:
 
 permissions:
@@ -32,6 +35,9 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          PUBLIC_BUTTONDOWN_ACTION_URL: ${{ vars.PUBLIC_BUTTONDOWN_ACTION_URL }}
+          PUBLIC_SUBSCRIBE_URL: ${{ vars.PUBLIC_SUBSCRIBE_URL }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
