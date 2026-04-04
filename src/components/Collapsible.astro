@@ -1,0 +1,71 @@
+---
+interface Props {
+  summary: string;
+}
+
+const { summary } = Astro.props;
+---
+
+<details class="collapsible">
+  <summary class="collapsible__summary">{summary}</summary>
+  <div class="collapsible__body">
+    <slot />
+  </div>
+</details>
+
+<style>
+  .collapsible {
+    margin-block: var(--space-6);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-surface);
+    overflow: hidden;
+  }
+
+  .collapsible__summary {
+    cursor: pointer;
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text);
+    list-style: none;
+  }
+
+  .collapsible__summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .collapsible__summary::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: var(--space-2);
+    color: var(--color-accent);
+    transition: transform var(--transition);
+  }
+
+  .collapsible[open] .collapsible__summary::before {
+    transform: rotate(90deg);
+  }
+
+  .collapsible__summary:hover {
+    color: var(--color-accent);
+  }
+
+  .collapsible__body {
+    padding: 0 var(--space-4) var(--space-4);
+    border-top: 1px solid var(--color-border);
+    margin-top: 0;
+  }
+
+  .collapsible__body :global(pre) {
+    margin-block: var(--space-4) 0;
+  }
+
+  .collapsible__body :global(pre:first-child) {
+    margin-top: var(--space-4);
+  }
+
+  .collapsible__body :global(p:first-child) {
+    margin-top: var(--space-4);
+  }
+</style>

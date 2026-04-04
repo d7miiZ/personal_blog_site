@@ -1,7 +1,9 @@
 ---
+import type { MarkdownHeading } from 'astro';
 import Base from './Base.astro';
 import TagPill from '../components/TagPill.astro';
 import SubscribeCta from '../components/SubscribeCta.astro';
+import TableOfContents from '../components/TableOfContents.astro';
 import { formatDate } from '../utils/reading-time';
 import { link } from '../utils/url';
 
@@ -15,6 +17,8 @@ interface Props {
   cover?: string;
   coverAlt?: string;
   collection: 'posts' | 'projects';
+  /** From `await entry.render()` — auto table of contents when present. */
+  headings?: MarkdownHeading[];
 }
 
 const {
@@ -27,6 +31,7 @@ const {
   cover,
   coverAlt,
   collection,
+  headings,
 } = Astro.props;
 
 const backHref = collection === 'posts'  ? link('/writing') : link('/projects');
@@ -67,6 +72,8 @@ const backLabel = collection === 'posts' ? 'Writing' : 'Projects';
         <img src={cover} alt={coverAlt ?? title} />
       </div>
     )}
+
+    {headings && <TableOfContents headings={headings} />}
 
     <div class="prose">
       <slot />

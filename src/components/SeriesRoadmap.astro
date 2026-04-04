@@ -1,0 +1,114 @@
+---
+export interface RoadmapStep {
+  label: string;
+  status: 'done' | 'current' | 'upcoming';
+}
+
+interface Props {
+  part: number;
+  total: number;
+  steps: RoadmapStep[];
+}
+
+const { part, total, steps } = Astro.props;
+---
+
+<section class="roadmap" aria-label={`Series progress: part ${part} of ${total}`}>
+  <p class="roadmap__meta">
+    Part <strong>{part}</strong> of <strong>{total}</strong>
+  </p>
+  <ol class="roadmap__list">
+    {
+      steps.map((s) => (
+        <li class:list={['roadmap__item', `roadmap__item--${s.status}`]}>
+          <span class="roadmap__marker" aria-hidden="true" />
+          <span class="roadmap__label">{s.label}</span>
+        </li>
+      ))
+    }
+  </ol>
+</section>
+
+<style>
+  .roadmap {
+    margin-block: var(--space-8);
+    padding: var(--space-8);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    background: linear-gradient(
+      135deg,
+      var(--color-surface) 0%,
+      color-mix(in srgb, var(--color-accent) 6%, var(--color-surface)) 100%
+    );
+  }
+
+  .roadmap__meta {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-5);
+    line-height: 1.5;
+  }
+
+  .roadmap__meta strong {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+
+  .roadmap__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .roadmap__item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    padding-block: var(--space-1);
+    line-height: 1.5;
+  }
+
+  .roadmap__item--done .roadmap__label {
+    color: var(--color-text-muted);
+    text-decoration: line-through;
+    text-decoration-color: var(--color-text-subtle);
+  }
+
+  .roadmap__item--current .roadmap__label {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+
+  .roadmap__item--upcoming .roadmap__label {
+    color: var(--color-text-muted);
+  }
+
+  .roadmap__marker {
+    flex-shrink: 0;
+    width: 0.65rem;
+    height: 0.65rem;
+    margin-top: 0.35em;
+    border-radius: var(--radius-full);
+    background-color: var(--color-border);
+    box-shadow: 0 0 0 2px var(--color-bg);
+  }
+
+  .roadmap__item--done .roadmap__marker {
+    background-color: var(--color-accent);
+    opacity: 0.5;
+  }
+
+  .roadmap__item--current .roadmap__marker {
+    background-color: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 35%, transparent);
+  }
+
+  .roadmap__item--upcoming .roadmap__marker {
+    background-color: var(--color-border);
+  }
+</style>

@@ -11,7 +11,7 @@ export async function getStaticPaths() {
 }
 
 const { project } = Astro.props;
-const { Content } = await project.render();
+const { Content, headings } = await project.render();
 ---
 
 <Post
@@ -22,6 +22,7 @@ const { Content } = await project.render();
   cover={project.data.cover}
   coverAlt={project.data.coverAlt}
   collection="projects"
+  headings={headings}
 >
   {project.data.links && (
     <div class="project-links">

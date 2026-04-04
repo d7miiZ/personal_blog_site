@@ -1,0 +1,288 @@
+---
+title: "Running Linux Kernel With Minimal FS In BeagleBone Black - Part 1"
+description: "Part 1: Introduction and getting tooling needed for cross-compiling to BeagleBone Black."
+date: 2026-04-04
+tags: ["embedded-linux", "beaglebone", "linux-kernel"]
+---
+import Figure from '../../components/Figure.astro';
+import Callout from '../../components/Callout.astro';
+import Collapsible from '../../components/Collapsible.astro';
+import SeriesRoadmap from '../../components/SeriesRoadmap.astro';
+import EmbeddedSetupImage from '../../assets/images/posts/embedded_dev_setup.png';
+import CrosstoolMenueImage from '../../assets/images/posts/crosstool_menue.png';
+
+<SeriesRoadmap
+  part={1}
+  total={4}
+  steps={[
+    { label: 'Cross-compilation toolchain (this post)', status: 'current' },
+    { label: 'Booting the BBB and working with a bootloader', status: 'upcoming' },
+    { label: 'Linux kernel build and boot parameters', status: 'upcoming' },
+    { label: 'Minimal root filesystem', status: 'upcoming' },
+  ]}
+/>
+
+## Introduction
+
+I finished [Bootlin’s embedded Linux course](https://bootlin.com/training/embedded-linux/) and I decided to try and replicate what I learned on a real board. In this serries I will try to build/boot bootloader, kernel and a minimal fs in a BeagleBone Black (bbb) board, I got mine from [Amazon](https://amzn.eu/d/0ecv7bg8).
+
+To build/boot the things that I mentioned before I would need to cross-compile all of it (bootloader/kernel/fs/etc), and for this I would need what we 
+call a cross-compilation toolchain.
+
+Roughly how the setup looks:
+
+<Figure
+  src={EmbeddedSetupImage}
+  alt="Host machine connected to embedded target for build, deploy, and debug"
+  caption="Figure 1: Typical embedded Linux development setup"
+/>
+
+## Setup
+
+<Callout variant="caution" title="Host OS">
+preferably you should use Linux machine to do everything in this series but I unfortunately have Mac OS and because of that I decided to use Docker, if you are like me you might want to use this Docker+docker compose file that I used (don't recommend, please use Linux)
+</Callout>
+
+<Collapsible summary="Dockerfile and compose.yaml">
+
+```dockerfile
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
+
+RUN apt-get update && apt-get install -y \
+    sudo bash-completion ca-certificates locales tzdata \
+    git wget curl rsync unzip xz-utils zstd bzip2 file cpio bc \
+    build-essential gcc g++ make cmake ninja-build pkg-config \
+    autoconf automake libtool libtool-bin help2man texinfo \
+    gawk sed flex bison patch \
+    python3 python3-pip python3-venv python3-setuptools python3-dev \
+    libncurses-dev libssl-dev libelf-dev dwarves \
+    device-tree-compiler u-boot-tools ccache \
+    vim less tree \
+ && locale-gen en_US.UTF-8 \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+
+RUN useradd -ms /bin/bash dev \
+ && echo "dev ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+USER dev
+WORKDIR /workspace
+CMD ["sleep", "infinity"]
+```
+
+```yaml
+services:
+  embdev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: embdev-bbb
+    platform: linux/amd64
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    volumes:
+      - embdev-workspace:/workspace
+      - embdev-home:/home/dev
+      - ./:/project
+
+volumes:
+  embdev-workspace:
+  embdev-home:
+```
+
+</Collapsible>
+
+## Cross-compilation toolchain
+
+Tools run on the **host** (e.g. `x86_64`), output for the **target** (here, 32-bit ARM).
+
+Usually contains:
+
+- **Cross compiler** (`gcc`)
+- **Binutils** (`as`, `ld`, `objdump`, `strip`, …)—see [GNU Binutils](https://www.gnu.org/software/binutils/)
+- **C library** (e.g. **glibc**, **uClibc**, **musl**)
+- **Kernel headers** (aligned with the kernel you’ll run)
+- **Debugger** (`gdb`, optional)
+
+| How you get it | Tradeoff |
+| ---------------- | -------- |
+| Build everything yourself | Control, pain (too hard for me) |
+| Prebuilt toolchain | Fast, rigid |
+| Automated tools | Custom + educational |
+
+I will do the last since it allows you to customize it + see what choices you need to make to build a cross-compilation toolchain.
+
+## Install crosstool-NG
+
+```bash
+git clone https://github.com/crosstool-ng/crosstool-ng
+cd crosstool-ng/
+```
+
+We first need to generate a configure script since crosstool-NG is build system uses [Autotools](https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html), once configure script is generated we pass to it `--enable-local` to keep installation locally and not system wide
+
+```bash
+./bootstrap
+./configure --enable-local
+make
+```
+
+If all is good you should be able to run this:
+
+```bash
+./ct-ng help
+This is crosstool-NG version 1.28.0.23_185f348
+
+Copyright (C) 2008  Yann E. MORIN <yann.morin.1998@free.fr>
+This is free software; see the source for copying conditions.
+There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.
+```
+
+## Sample config and menuconfig
+
+Crosstool-ng comes with a set of ready-made configuration files for various typical setup to use as starting point, e.g:
+
+```bash
+./ct-ng list-samples
+Status  Sample name
+[L...]   aarch64_be-unknown-linux-gnu
+[L...]   aarch64_be-unknown-linux-musl
+[L..X]   aarch64-w64-mingw32
+[L...]   alphaev56-unknown-linux-gnu
+....
+[L...]   x86_64-unknown-linux-gnu
+[L...]   x86_64-unknown-linux-uclibc
+[L..X]   x86_64-w64-mingw32
+[L..X]   xtensa-fsf-elf
+[L...]   xtensa-fsf-linux-uclibc
+ L (Local)       : sample was found in current directory
+ G (Global)      : sample was installed with crosstool-NG
+ X (EXPERIMENTAL): sample may use EXPERIMENTAL features
+ B (BROKEN)      : sample is currently broken
+ O (OBSOLETE)    : sample needs to be upgraded
+```
+
+In [BBB high level spec](https://docs.beagleboard.org/boards/beaglebone/black/ch05.html) says the SoC (system on chip, which basically means CPU and other stuff close together in on chip, as far as I understand) is [Sitara AM3358BZCZ100](https://www.ti.com/product/AM3358/part-details/AM3358BZCZ100) which uses `Arm Cortex-A8` as CPU, so for me I will use the below as starting point (you choose what CPU your board use):
+
+```bash
+./ct-ng arm-cortexa9_neon-linux-gnueabihf
+```
+
+<Callout variant="tip" title="Match your own board">
+  Match **Target options** to **your** CPU, FPU, and ABI. Blind copy-paste → fun illegal instructions later.
+</Callout>
+
+```bash
+./ct-ng menuconfig
+```
+
+<Figure
+  src={CrosstoolMenueImage}
+  alt="crosstool-NG menuconfig window showing toolchain target and library options"
+  caption="Figure 2: crosstool-NG configuration menu"
+/>
+
+### Target options
+
+- **ARCH_FPU** → `vfpv3`
+- **Floating point** → `hardware`
+
+This tells Crosstool-NG to emit hardware FP instructions instead of software floating point, this entirely depends on what your CPU/target support
+
+### Toolchain options
+
+- **Tuple vendor** → `ash`
+- **Tuple alias** → `arm-linux` → tools like `arm-linux-gcc`
+
+To explain this we need to understand what are the tuples in toolchain name and what do they mean, example names:
+
+#### Triplet
+
+Examples: `arm-linux-gnueabihf`, `mips64el-linux-gnu`.
+
+1. **Architecture** — `arm`, `riscv64`, …
+2. **Vendor** (optional) — e.g. `ash`
+3. **OS / env** — `linux`, `none`, …
+4. **ABI / libc** — `gnueabihf`, `musleabihf`, …
+
+### Operating system
+
+- **Linux version** close to the kernel you’ll build (I aimed near **6.6**).
+
+### C library
+
+- **musl**, wanted to try it and lighter than **glibc** in theory.
+
+### C compiler
+
+- **GCC** → `14.3.0`
+- **C++** enabled
+
+Save and exit.
+
+## Build
+
+```bash
+./ct-ng build
+```
+
+For me it took really long time (since Docker Linux in Mac OS), about 50 minutes :(, so go make tea or play a game (I recommend [Katana Zero](https://store.steampowered.com/app/460950/Katana_ZERO/))
+
+Toolchain under `$HOME/x-tools/arm-*`. Add `bin` to `PATH`:
+
+```bash
+echo 'export PATH="/home/dev/x-tools/arm-ash-linux-musleabihf/bin/:$PATH"' >> ~/.bashrc
+```
+
+Side note: since we added `arm-linux` as alias in tuple setup above then we can call our toolchain like this `arm-linux-gcc`.
+
+```bash
+arm-linux-gcc --version
+arm-linux-gcc (crosstool-NG 1.28.0.23_185f348) 14.3.0
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+```
+
+## Test The Toolchain
+
+```c
+#include <stdio.h>
+
+int main(void) {
+    printf("Hello, world!\n");
+    return 0;
+}
+```
+
+```bash
+arm-linux-gcc -o hello hello.c
+file hello
+```
+
+Expect 32-bit ARM ELF; **musl** shows up in the interpreter line, e.g.:
+
+```text
+hello: ELF 32-bit LSB executable, ARM, EABI5 version 1 (SYSV), dynamically linked, interpreter /lib/ld-musl-armhf.so.1, not stripped
+```
+
+## Clean
+
+After building the cross-compilation toolchain we can now cleanup crosstool-NG stuff by running the following command:
+
+```bash
+./ct-ng clean
+```
+
+## Next
+
+Part **2**: how the BBB **boots** and working with **bootloader**.

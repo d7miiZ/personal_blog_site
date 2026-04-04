@@ -1,0 +1,25 @@
+---
+import type { TocNode } from '../utils/toc-tree';
+import Self from './TocBranch.astro';
+
+interface Props {
+  nodes: TocNode[];
+  /** True for nested `<ul>` (inside an `<li>`). */
+  nested?: boolean;
+}
+
+const { nodes, nested = false } = Astro.props;
+---
+
+<ul class:list={['toc__branch', nested && 'toc__branch--nested']}>
+  {
+    nodes.map((n) => (
+      <li class:list={['toc__item', `toc__item--d${n.heading.depth}`]}>
+        <a href={`#${n.heading.slug}`} class="toc__link" data-toc-link>
+          <span class="toc__link-text">{n.heading.text}</span>
+        </a>
+        {n.children.length > 0 && <Self nodes={n.children} nested />}
+      </li>
+    ))
+  }
+</ul>
