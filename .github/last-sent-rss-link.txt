@@ -1,1 +1,1 @@
-https://d7miiz.github.io/personal_blog_site/writing/test/
+https://d7miiz.github.io/personal_blog_site/writing/running_linux_kernel_with_minimal_fs_in_bbb_part1/
