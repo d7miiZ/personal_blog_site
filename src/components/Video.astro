@@ -1,0 +1,29 @@
+---
+/**
+ * Embedded HTML5 video for MDX posts.
+ *
+ * Repo-hosted options:
+ * - `public/videos/...` → pass `src={link('/videos/posts/myclip.mp4')}` (no import needed; add the file under public/).
+ * - Bundled asset → `import clip from '../../assets/videos/posts/myclip.mp4'` then `src={clip}`.
+ */
+interface Props {
+  src: string;
+  caption?: string;
+  poster?: string;
+}
+
+const { src, caption, poster } = Astro.props;
+---
+
+<figure>
+  <video
+    src={src}
+    controls
+    playsinline
+    preload="metadata"
+    poster={poster}
+  >
+    <a href={src}>Download the video</a> if playback does not work in your browser.
+  </video>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>

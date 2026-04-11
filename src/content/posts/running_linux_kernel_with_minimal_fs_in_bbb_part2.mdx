@@ -1,0 +1,276 @@
+---
+title: "Running Linux Kernel With Minimal FS In BeagleBone Black - Part 2"
+description: "Part 2: BBB boot process, bootloaders, SD card partitioning, building U-Boot, serial connection, and first boot."
+date: 2026-04-10
+tags: ["embedded-linux", "beaglebone", "u-boot", "bootloader"]
+---
+import Figure from '../../components/Figure.astro';
+import Video from '../../components/Video.astro';
+import Callout from '../../components/Callout.astro';
+import SeriesRoadmap from '../../components/SeriesRoadmap.astro';
+import BootSwitchDoc from '../../assets/images/posts/bbb_boot_switch_doc.png';
+import BBBPic from '../../assets/images/posts/bbb_pic.png';
+import BBBBootDiagram from '../../assets/images/posts/bbb_boot_diagram.png';
+import SerialSetup from '../../assets/images/posts/serial_setup.png';
+import BootingVid from '../../assets/videos/booting-bbb.mov';
+import { link } from '../../utils/url';
+
+<SeriesRoadmap
+  part={2}
+  total={4}
+  steps={[
+    { label: 'Cross-compilation toolchain', status: 'completed' },
+    { label: 'Booting the BBB and working with a bootloader (this post)', status: 'current' },
+    { label: 'Linux kernel build and boot parameters', status: 'upcoming' },
+    { label: 'Minimal root filesystem', status: 'upcoming' },
+  ]}
+/>
+
+## Introduction
+
+In <a href={link('/writing/running_linux_kernel_with_minimal_fs_in_bbb_part1')}>Part 1</a> we built the cross-compilation toolchain. This part is about booting: what the BeagleBone Black (BBB) expects on an SD card, how to build and place U-Boot, how I talk to the board over serial on macOS, and what a successful first boot looks like.
+
+## What is a bootloader?
+
+A bootloader is the first software executed by a hardware platform. Its job is to initialize enough hardware and load the next stage (usually a kernel).
+
+The booting process is different from platform to platform but usually falls into one of two categories:
+
+1. **No ROM help** — the processor does not assist with installing or loading a bootloader, you need detailed hardware knowledge (I am not sure how that path works in practice).
+2. **ROM bootstrap** — the processor has ROM code that takes part in early boot and helps load the next stage.
+
+The AM3358 SoC on the BBB falls into the second category thankfully.
+
+## Booting from an SD card on the BBB
+
+Unfortunately figuring out how your SoC boots is no easy task, you have to read a couple of technical docs from the board and SoC vendors. I’ll split this into: choosing SD boot, then what the ROM loads, then how the card is usually laid out.
+
+### SD boot vs eMMC and the boot switch
+
+On BBB by default it boots from eMMC (embedded Multi-Media Card), but we do not want that, we want to boot from an SD card that has our bootloader, kernel, and so on.
+
+To change that on the BBB there is a boot switch on the board that we have to hold while it powers up, see [section 5.3.5 boot modes](https://docs.beagleboard.org/beaglebone-black.pdf).
+
+<Figure
+  src={BootSwitchDoc}
+  alt="BBB boot from sd card docs"
+  caption="Figure 1: BBB boot from SD card (docs excerpt)"
+/>
+
+As for where the boot switch is, see the board diagram from the same doc — notice the `Boot Switch`.
+
+<Figure
+  src={BBBPic}
+  alt="BBB board diagram"
+  caption="Figure 2: BBB board diagram (boot switch location)"
+/>
+
+### ROM code, SPL, `MLO`, and full U-Boot
+
+Now we need to know what the SD card should look like and what it must contain. For that we read the SoC docs (AM3358) about how the ROM behaves.
+
+I found this [AM335x U-Boot User's Guide](https://tha.de/~hhoegl/home/elinux/bbb/AM335x-U-Boot-User%27s-Guide.pdf) which you can read if you want more details, but basically it describes a two-stage U-Boot flow.
+
+```quote
+In AM335x the ROM code serves as the bootstrap loader, sometimes referred to as the Initial Program Loader (IPL)
+or the Primary Program Loader (PPL). The booting is completed in two consecutive stages by U-Boot [1] binaries.
+The binary for the 1st U-Boot stage is referred to as the Secondary Program Loader (SPL) or the MLO. The binary
+for the 2nd U-Boot stage is simply referred to as U-Boot. SPL is a non-interactive loader and is a specially built
+version of U-Boot. It is built concurrently when building U-Boot.
+```
+
+Why two stages? The first stage has to fit in static RAM, which is tiny, so you cannot fit a full-featured bootloader there. You ship a minimal loader that brings up basics (especially DDR RAM), then that loader pulls the full U-Boot into main memory. After that, full U-Boot can load the kernel and whatever else you need.
+
+### Typical SD layout
+
+The same guide describes a common two-partition picture:
+
+- **1st partition:** FAT32 with `MLO` (small bootloader) and `u-boot.img` (full bootloader).
+- **2nd partition:** ext4 root filesystem (and often the kernel). We will add that when we get there.
+
+High-level picture of how boot works on the BBB:
+
+<Figure
+  src={BBBBootDiagram}
+  alt="BBB boot diagram"
+  caption="Figure 3: BBB boot flow (diagram)"
+/>
+
+Now this is enough theory to actually prepare the card and binaries.
+
+## Building U-Boot for the BBB
+
+There are a couple of bootloaders out there, but we will use [U-Boot](https://github.com/u-boot/u-boot?tab=readme-ov-file) because it matches the SoC guide.
+
+The U-Boot README has a `Building the Software` section. This is what I followed.
+
+Fetching U-Boot:
+
+```bash
+git clone https://source.denx.de/u-boot/u-boot.git/
+cd u-boot
+```
+
+Point the build at the cross toolchain from Part 1:
+
+```bash
+export CROSS_COMPILE=arm-linux-
+```
+
+U-Boot uses `menuconfig` similar to how crosstoo-ng is configured in Part1 and has many predefined configs for many boards.
+
+```bash
+dev@b7cc910aeffd:/workspace/u-boot$ ls configs/
+10m50_defconfig                                  evb-rk3328_defconfig                         MPC8548CDS_legacy_defconfig             radxa-e25-rk3568_defconfig
+3c120_defconfig                                  evb-rk3399_defconfig                         mscc_jr2_defconfig                      radxa-zero2_defconfig
+A10-OLinuXino-Lime_defconfig                     evb-rk3568_defconfig                         mscc_luton_defconfig                    radxa-zero_defconfig
+A10s-OLinuXino-M_defconfig                       evb-rk3588_defconfig                         mscc_ocelot_defconfig                   rcar3_salvator-x_defconfig
+```
+
+For the BBB I used `am335x_evm_defconfig`:
+
+```bash
+dev@b7cc910aeffd:/workspace/u-boot$ make am335x_evm_defconfig
+#
+# configuration written to .config
+#
+dev@b7cc910aeffd:/workspace/u-boot$ 
+```
+
+Optional tweaks via `menuconfig`:
+
+```bash
+make menuconfig 
+```
+
+- SPL Configuration Options → Support Networking → off (keeps the SPL smaller).
+
+Build:
+
+```bash
+make DEVICE_TREE=am335x-boneblack
+```
+
+You should get `MLO` (SPL) and `u-boot.img` (full U-Boot). Pick the device tree that matches your board, we will talk more about device trees in the next part. For now, think of it as a structured description of the hardware.
+
+## Partitioning the SD card on macOS
+
+With those artifacts in hand, the next step is partitioning the SD card and copying files to the right place.
+
+On Linux I would normally use `cfdisk` or `parted`, on macOS I used `diskutil` instead.
+
+Find the disk (double check the identifier so you do not wipe the wrong drive):
+
+```bash
+diskutil list
+```
+
+For me it was `/dev/disk4`.
+
+Unmount and clear the start of the device (partition table area):
+
+```bash
+diskutil unmountDisk /dev/disk4
+```
+```bash
+sudo dd if=/dev/zero of=/dev/rdisk4 bs=1m count=16
+```
+
+Create a small FAT32 boot partition, leave the rest unallocated for later (rootfs, etc.):
+
+```bash
+diskutil partitionDisk /dev/disk4 MBRFormat "MS-DOS FAT32" boot 64M "Free Space" unused R
+```
+
+Mark the first partition as boatable by using `fdisk`:
+
+- print
+- flag 1
+- print
+- write
+- y
+- exit
+
+```bash
+sudo fdisk -e /dev/rdisk4
+fdisk: could not open MBR file /usr/standalone/i386/boot0: No such file or directory
+Enter 'help' for information
+fdisk: 1> print
+Disk: /dev/rdisk4	geometry: 941/255/63 [15126528 sectors]
+Offset: 0	Signature: 0xAA55
+         Starting       Ending
+ #: id  cyl  hd sec -  cyl  hd sec [     start -       size]
+------------------------------------------------------------------------
+ 1: 0B 1023 254  63 - 1023 254  63 [      2048 -     125000] Win95 FAT-32
+ 2: 00    0   0   0 -    0   0   0 [         0 -          0] unused      
+ 3: 00    0   0   0 -    0   0   0 [         0 -          0] unused      
+ 4: 00    0   0   0 -    0   0   0 [         0 -          0] unused      
+fdisk: 1> flag 1
+Partition 1 marked active.
+fdisk:*1> print   
+Disk: /dev/rdisk4	geometry: 941/255/63 [15126528 sectors]
+Offset: 0	Signature: 0xAA55
+         Starting       Ending
+ #: id  cyl  hd sec -  cyl  hd sec [     start -       size]
+------------------------------------------------------------------------
+*1: 0B 1023 254  63 - 1023 254  63 [      2048 -     125000] Win95 FAT-32
+ 2: 00    0   0   0 -    0   0   0 [         0 -          0] unused      
+ 3: 00    0   0   0 -    0   0   0 [         0 -          0] unused      
+ 4: 00    0   0   0 -    0   0   0 [         0 -          0] unused      
+fdisk:*1> write
+Device could not be accessed exclusively.
+A reboot will be needed for changes to take effect. OK? [n] y
+Writing MBR at offset 0.
+fdisk: 1> exit
+```
+
+Copy `MLO` and `u-boot.img` onto the first partition (use whatever mount point your Mac shows, often something under `/Volumes/`):
+
+```bash
+cp MLO /Volumes/BOOT/
+cp u-boot.img /Volumes/BOOT/
+```
+
+## Serial console
+
+Before plugging in power with the new card, it helps to have the serial console ready. this is where bootloader (and soon kernel) logs show up.
+
+You might ask why use serial? why not other port like USB? as far as I understand serial port is very simple that it can send data in very early bring up (HW initialize very early). In contrast USB initialize way later on I think.
+
+I use this [serial to USB adapter](https://amzn.eu/d/0d2KbItZ), wired to the serial debug header (pin order matters, match GND/TX/RX carefully, see Figure 2 for header placement on the board).
+
+<Figure
+  src={SerialSetup}
+  alt="BBB serial setup"
+  caption="Figure 4: BBB serial setup"
+/>
+
+`picocom` is used as serial communication program:
+
+```bash
+brew install picocom
+```
+
+List candidate devices, then open the right `cu.*` device at 115200 baud (idk what baud is but I see people use it):
+
+```bash
+ls /dev/cu.*
+```
+```bash
+picocom -b 115200 /dev/cu.usbserial-UUT1
+```
+
+## First boot: our U-Boot over serial
+
+With picocom connected, insert the SD card, hold the boot switch, and apply power so the board selects SD boot.
+
+You should see the SPL hand off to U-Boot, the **build date** in the U-Boot banner should match when you compiled, that is a good sign you are running *your* images from the card, not an older copy from eMMC.
+
+<Video
+  src={BootingVid}
+  caption="Serial capture: power-on with SD boot through to the U-Boot banner (date should match your build)."
+/>
+
+## Next
+
+Part **3**: build the Linux kernel for the BBB, pass boot parameters cleanly, and hand off to a minimal root filesystem.

@@ -234,6 +234,13 @@ main {
   margin-block: 0;
 }
 
+.prose figure video {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid var(--color-border);
+}
+
 .prose figcaption {
   margin-top: var(--space-3);
   font-size: var(--text-sm);
