@@ -20,6 +20,7 @@ const {
 const siteUrl = Astro.site?.toString().replace(/\/$/, '') ?? '';
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? 'https://example.com');
 const fullTitle = title === 'Home' ? 'Ash' : `${title} — Ash`;
+const goatcounterUrl = import.meta.env.PUBLIC_GOATCOUNTER_URL?.trim() ?? '';
 ---
 
 <!doctype html>
@@ -58,6 +59,10 @@ const fullTitle = title === 'Home' ? 'Ash' : `${title} — Ash`;
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
       rel="stylesheet"
     />
+
+    {goatcounterUrl && (
+      <script async data-goatcounter={goatcounterUrl} src="//gc.zgo.at/count.js" />
+    )}
   </head>
   <body>
     <Header />

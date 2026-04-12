@@ -38,6 +38,7 @@ jobs:
         env:
           PUBLIC_BUTTONDOWN_ACTION_URL: ${{ vars.PUBLIC_BUTTONDOWN_ACTION_URL }}
           PUBLIC_SUBSCRIBE_URL: ${{ vars.PUBLIC_SUBSCRIBE_URL }}
+          PUBLIC_GOATCOUNTER_URL: ${{ vars.PUBLIC_GOATCOUNTER_URL }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

@@ -3,6 +3,7 @@
 interface ImportMetaEnv {
   readonly PUBLIC_BUTTONDOWN_ACTION_URL?: string;
   readonly PUBLIC_SUBSCRIBE_URL?: string;
+  readonly PUBLIC_GOATCOUNTER_URL?: string;
 }
 
 interface ImportMeta {
